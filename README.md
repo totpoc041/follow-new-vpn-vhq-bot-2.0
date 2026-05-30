@@ -114,6 +114,53 @@ python3 main.py
 3. Запустит фоновую задачу уведомлений
 4. Начнёт обрабатывать сообщения
 
+## 🐳 Docker VPS
+
+Самый простой деплой на VPS:
+
+1. Клонируйте проект на сервер:
+
+```bash
+git clone git@github.com:totpoc041/follow-new-vpn-vhq-bot-2.0.git
+cd follow-new-vpn-vhq-bot-2.0
+```
+
+2. Создайте `.env` вручную:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+3. Запустите контейнер:
+
+```bash
+docker compose up -d --build
+```
+
+4. Проверьте логи:
+
+```bash
+docker compose logs -f
+```
+
+Бот будет автоматически перезапускаться благодаря `restart: unless-stopped`.
+
+### Обновление из git на VPS
+
+```bash
+cd follow-new-vpn-vhq-bot-2.0
+git pull
+docker compose up -d --build
+docker compose logs -f --tail=100
+```
+
+### Остановка
+
+```bash
+docker compose down
+```
+
 ## 📋 Команды
 
 ### Пользовательские
