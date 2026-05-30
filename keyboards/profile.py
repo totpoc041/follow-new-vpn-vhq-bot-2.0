@@ -24,9 +24,7 @@ def profile_type_keyboard() -> InlineKeyboardBuilder:
         InlineKeyboardBuilder с кнопками выбора типа
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="📱 Hiddify профиль", callback_data="link_hiddify")
     builder.button(text="📱 V2Box профиль", callback_data="link_v2box")
-    builder.button(text="📱 V2Ray профиль", callback_data="link_v2ray")
     builder.button(text="◀️ Назад", callback_data="main_menu")
     builder.adjust(1)
     return builder

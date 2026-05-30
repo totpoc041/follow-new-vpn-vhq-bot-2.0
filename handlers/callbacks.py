@@ -209,9 +209,7 @@ async def handle_choose_profile(callback_query: CallbackQuery):
     """Выбор типа профиля."""
     text = (
         "<b>🔗 Выберите тип профиля:</b>\n\n"
-        "📱 <b>Hiddify</b> - Универсальная ссылка для приложения Hiddify\n"
         "📱 <b>V2Box</b> - Конфигурация для приложения V2Box\n"
-        "📱 <b>V2Ray</b> - Конфигурация для приложения V2Ray\n"
     )
     await callback_query.message.edit_text(text, reply_markup=profile_type_keyboard().as_markup(), parse_mode="HTML")
 
