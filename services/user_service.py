@@ -14,6 +14,28 @@ logger = logging.getLogger(__name__)
 
 class UserService:
     """Сервис для управления пользователями."""
+
+    USERNAME_REQUIRED_TEXT = (
+        "⚠️ <b>Для выдачи VPN обязательно нужен @username в Telegram.</b>\n\n"
+        "Установите имя пользователя в настройках Telegram и затем заново откройте бота через /start."
+    )
+
+    @staticmethod
+    def normalize_username(username: Optional[str]) -> Optional[str]:
+        """Нормализовать username Telegram."""
+        if not username:
+            return None
+
+        normalized = str(username).strip().lstrip("@")
+        return normalized or None
+
+    @staticmethod
+    def format_username(username: Optional[str]) -> str:
+        """Преобразовать username в удобный для показа вид."""
+        normalized = UserService.normalize_username(username)
+        if not normalized:
+            return "не установлен"
+        return f"@{normalized}"
     
     @staticmethod
     def get_user(user_id: int) -> Optional[tuple]:
@@ -72,8 +94,42 @@ class UserService:
             username: Имя пользователя в Telegram
             balance: Начальный баланс
         """
-        db.add_user(user_id, username, balance)
-        logger.info(f"Пользователь {username} (ID: {user_id}) зарегистрирован")
+        normalized_username = UserService.normalize_username(username)
+        db.add_user(user_id, normalized_username, balance)
+        logger.info(f"Пользователь {normalized_username or 'без_username'} (ID: {user_id}) зарегистрирован")
+
+    @staticmethod
+    def sync_username(user_id: int, username: Optional[str]) -> None:
+        """
+        Синхронизировать username из Telegram с профилем в БД.
+        """
+        user = db.get_user(user_id)
+        if not user or not user[3]:
+            return
+
+        try:
+            profile = json.loads(user[3])
+        except json.JSONDecodeError:
+            logger.error(f"Ошибка парсинга профиля пользователя {user_id}")
+            return
+
+        normalized_username = UserService.normalize_username(username)
+        if profile.get("username") == normalized_username:
+            return
+
+        profile["username"] = normalized_username
+        db.update_user_profile(user_id, json.dumps(profile))
+        logger.info("Username синхронизирован для пользователя %s", user_id)
+
+    @staticmethod
+    def has_username(user_id: int) -> bool:
+        """
+        Проверить, установлен ли username у пользователя.
+        """
+        profile = UserService.get_user_profile(user_id)
+        if not profile:
+            return False
+        return UserService.normalize_username(profile.get("username")) is not None
     
     @staticmethod
     def update_user_uuid(user_id: int, uuid: str) -> None:
@@ -129,15 +185,18 @@ class UserService:
             return "Привет! Я бот для работы с Hiddify API. Выберите действие:"
         
         profile_data = json.loads(user_info[3]) if user_info[3] else {}
-        username = profile_data.get("username", "Неизвестно")
+        username = UserService.format_username(profile_data.get("username"))
         balance = profile_data.get("balance", 0.0)
         
         uuid = user_info[2]
         if not uuid or uuid == "N/A":
-            return (
+            text = (
                 "⚠️ <b>У вас нет активной подписки.</b>\n\n"
                 "Чтобы начать пользоваться сервисом, выберите тариф."
             )
+            if username == "не установлен":
+                text += f"\n\n{UserService.USERNAME_REQUIRED_TEXT}"
+            return text
         
         # Если есть сервис Hiddify, получаем данные от API
         if hiddify_service:
@@ -162,10 +221,10 @@ class UserService:
                     f"🆔 <b>User ID:</b> {user_id}\n\n"
                     f"<b>📊 Статус подключения</b>\n"
                     f"🟢 <b>Статус:</b> {hiddify_info.get('status', 'Неизвестно')}\n"
-                    f"📅 <b>Дата активации:</b> {hiddify_info.get('start_date', 'Неизвестно')}\n"
+                    f"📅 <b>Дата активации:</b> {hiddify_info.get('start_date') or 'Неизвестно'}\n"
                     f"📆 <b>Дата окончания:</b> {hiddify_info.get('expire_date', 'Неизвестно')}\n"
                     f"📊 <b>Использовано трафика:</b> {hiddify_info.get('current_usage_gb', 0):.2f} GB / {hiddify_info.get('usage_limit_gb', 'N/A')} GB\n"
-                    f"📡 <b>Последний онлайн:</b> {hiddify_info.get('last_online', 'Неизвестно')}\n\n"
+                    f"📡 <b>Последний онлайн:</b> {hiddify_info.get('last_online') or 'Неизвестно'}\n\n"
                     f"<b>⚠️ ВАЖНО: </b> Не передавайте свои ключи и ссылки третьим лицам."
                 )
                 

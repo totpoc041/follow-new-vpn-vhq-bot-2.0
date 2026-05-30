@@ -211,6 +211,7 @@ class HiddifyService:
         Returns:
             Строка с ссылкой на подписку
         """
+        safe_username = (username or "user").strip().lstrip("@") or "user"
         link = config.HiddifyConfig.get_user_link(uuid)
         separator = "&" if "?" in link else "?"
-        return f"{link}{separator}asn=unknown#{username}-{user_id}"
+        return f"{link}{separator}asn=unknown#{safe_username}-{user_id}"

@@ -10,6 +10,7 @@ from aiogram.types import Message
 
 import database as db
 import config
+from services.user_service import UserService
 
 
 logger = logging.getLogger(__name__)
@@ -43,21 +44,24 @@ async def forward_to_admin(message: Message):
         message: Сообщение от пользователя
     """
     user_id = message.from_user.id
+    UserService.sync_username(user_id, message.from_user.username)
     user = db.get_user(user_id)
     pos = user[4] if user else "start"
 
     # Пересылаем только если пользователь в режиме подтверждения оплаты
     if pos == "confirm_payment":
         admin_id = config.BotConfig.ADMIN_PAYMENTS
+        username = UserService.format_username(message.from_user.username)
+        user_label = username if username != "не установлен" else "без username"
         
         if message.text:
-            admin_message = f"Пользователь @{message.from_user.username} (ID: {user_id}) отправил текст: {message.text}"
+            admin_message = f"Пользователь {user_label} (ID: {user_id}) отправил текст: {message.text}"
             await message.bot.send_message(admin_id, admin_message)
         elif message.photo:
-            admin_message = f"Пользователь @{message.from_user.username} (ID: {user_id}) отправил скриншот оплаты."
+            admin_message = f"Пользователь {user_label} (ID: {user_id}) отправил скриншот оплаты."
             await message.bot.send_message(admin_id, admin_message)
             await message.bot.send_photo(admin_id, message.photo[-1].file_id)
         elif message.document:
-            admin_message = f"Пользователь @{message.from_user.username} (ID: {user_id}) отправил документ оплаты."
+            admin_message = f"Пользователь {user_label} (ID: {user_id}) отправил документ оплаты."
             await message.bot.send_message(admin_id, admin_message)
             await message.bot.send_document(admin_id, message.document.file_id)

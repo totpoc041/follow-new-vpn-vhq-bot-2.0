@@ -15,7 +15,13 @@ import database as db
 from keyboards.main_menu import main_menu_buttons, main_menu_back, connect_buttons
 from keyboards.subscription import subscription_buttons, subscription_action_buttons
 from keyboards.payment import confirm_payment_button, confirm_payment_button_done
-from keyboards.profile import profile_type_keyboard, install_app_button_hiddify, install_app_button_v2ray, client_type_keyboard
+from keyboards.profile import (
+    profile_type_keyboard,
+    install_app_button_hiddify,
+    install_app_button_v2ray,
+    install_app_button_v2box,
+    client_type_keyboard,
+)
 from services.user_service import UserService
 from services.payment_service import PaymentService
 from services.subscription_service import SubscriptionService
@@ -53,6 +59,17 @@ async def _ensure_admin(callback_query: CallbackQuery) -> bool:
     return False
 
 
+async def _ensure_username(callback_query: CallbackQuery) -> bool:
+    user_id = callback_query.from_user.id
+    UserService.sync_username(user_id, callback_query.from_user.username)
+
+    if UserService.has_username(user_id):
+        return True
+
+    await callback_query.answer("Сначала установите @username в Telegram.", show_alert=True)
+    return False
+
+
 @router.callback_query()
 async def handle_callback(callback_query: CallbackQuery):
     """
@@ -63,6 +80,7 @@ async def handle_callback(callback_query: CallbackQuery):
     data = callback_query.data
     
     logging.info(f"Получен callback: {data} от пользователя {user_id}")
+    UserService.sync_username(user_id, callback_query.from_user.username)
     db.update_pos(data, user_id)
 
     try:
@@ -86,6 +104,10 @@ async def handle_callback(callback_query: CallbackQuery):
             await callback_query.answer()
             await handle_link_v2ray(callback_query)
 
+        elif data == "link_v2box":
+            await callback_query.answer()
+            await handle_link_v2box(callback_query)
+
         elif data == "link_hiddify":
             await callback_query.answer()
             await handle_link_hiddify(callback_query)
@@ -102,6 +124,10 @@ async def handle_callback(callback_query: CallbackQuery):
         elif data == "download_app_v2ray":
             await callback_query.answer()
             await handle_download_app_v2ray(callback_query)
+
+        elif data == "download_app_v2box":
+            await callback_query.answer()
+            await handle_download_app_v2box(callback_query)
 
         # Подписки и оплата
         elif data == "reg_subscription":
@@ -163,6 +189,9 @@ async def handle_main_menu(callback_query: CallbackQuery):
 async def handle_connect(callback_query: CallbackQuery):
     """Обработчик подключения."""
     user_id = callback_query.from_user.id
+    if not await _ensure_username(callback_query):
+        return
+
     balance = UserService.get_user_balance(user_id)
 
     if balance == 0:
@@ -181,6 +210,7 @@ async def handle_choose_profile(callback_query: CallbackQuery):
     text = (
         "<b>🔗 Выберите тип профиля:</b>\n\n"
         "📱 <b>Hiddify</b> - Универсальная ссылка для приложения Hiddify\n"
+        "📱 <b>V2Box</b> - Конфигурация для приложения V2Box\n"
         "📱 <b>V2Ray</b> - Конфигурация для приложения V2Ray\n"
     )
     await callback_query.message.edit_text(text, reply_markup=profile_type_keyboard().as_markup(), parse_mode="HTML")
@@ -202,7 +232,7 @@ async def handle_link_v2ray(callback_query: CallbackQuery):
     # Получаем информацию о подписке
     profile_data = json.loads(user_info[3]) if user_info[3] else {}
     balance = profile_data.get("balance", 0)
-    username = profile_data.get("username", "user")
+    username = profile_data.get("username") or "user"
 
     # Формируем ссылку на подписку
     subscription_link = hiddify_service.get_subscription_link(uuid, user_id, username)
@@ -246,6 +276,63 @@ async def handle_link_v2ray(callback_query: CallbackQuery):
     await callback_query.message.edit_text(text, reply_markup=main_menu_back().as_markup(), parse_mode="HTML")
 
 
+async def handle_link_v2box(callback_query: CallbackQuery):
+    """Получение V2Box ссылки."""
+    user_id = callback_query.from_user.id
+    user_info = db.get_user(user_id)
+    uuid = user_info[2] if user_info and user_info[2] and user_info[2] != "N/A" else None
+
+    if not uuid:
+        await callback_query.message.edit_text(
+            "⚠️ У вас пока нет активной подписки.",
+            reply_markup=main_menu_back().as_markup(),
+        )
+        return
+
+    profile_data = json.loads(user_info[3]) if user_info[3] else {}
+    balance = profile_data.get("balance", 0)
+    username = profile_data.get("username") or "user"
+
+    subscription_link = hiddify_service.get_subscription_link(uuid, user_id, username)
+
+    try:
+        hiddify_info = hiddify_service.get_user_info(uuid)
+        if isinstance(hiddify_info, dict) and 'error' not in hiddify_info:
+            usage_gb = hiddify_info.get('current_usage_gb', 0)
+            limit_gb = hiddify_info.get('usage_limit_gb', 0)
+            expire_date = hiddify_info.get('expire_date', 'Неизвестно')
+        else:
+            usage_gb = 0
+            limit_gb = 0
+            expire_date = 'Неизвестно'
+    except Exception as e:
+        logger.error(f"Ошибка при получении данных пользователя: {e}")
+        usage_gb = 0
+        limit_gb = 0
+        expire_date = 'Неизвестно'
+
+    text = (
+        f"🌐 <b>V2Box конфигурация</b>\n\n"
+        f"📊 <b>Статус подписки:</b>\n"
+        f"💰 Баланс: {balance} руб.\n"
+        f"📈 Использовано: {usage_gb:.2f} GB / {limit_gb} GB\n"
+        f"📅 Действует до: {expire_date}\n\n"
+        f"🔗 <b>Ссылка на подписку:</b>\n\n"
+        f"<code>{subscription_link}</code>\n\n"
+        f"✨ Нажмите на ссылку выше для копирования\n\n"
+        f"📝 <b>Инструкция:</b>\n"
+        f"1. Скопируйте ссылку выше\n"
+        f"2. Откройте приложение V2Box\n"
+        f"3. Добавьте подписку через импорт по ссылке\n"
+        f"4. Вставьте скопированную ссылку\n"
+        f"5. Обновите список серверов\n\n"
+        f"⚠️ <b>ПРИМЕЧАНИЕ:</b> После импорта добавьте исключения для доменов "
+        f"<b>.ru</b>, <b>.рф</b> и <b>.su</b>"
+    )
+
+    await callback_query.message.edit_text(text, reply_markup=main_menu_back().as_markup(), parse_mode="HTML")
+
+
 async def handle_link_hiddify(callback_query: CallbackQuery):
     """Получение Hiddify ссылки."""
     user_id = callback_query.from_user.id
@@ -279,8 +366,10 @@ async def handle_link_hiddify(callback_query: CallbackQuery):
 async def handle_download_app(callback_query: CallbackQuery):
     """Выбор клиента для скачивания."""
     text = (
-        "<b>📱 Установите приложение V2Box:</b>\n\n"
-        "Нажмите на кнопку ниже, чтобы открыть страницу приложения в App Store."
+        "<b>🤔 Выберите клиент, который будете использовать:</b>\n\n"
+        "📱 <b>Hiddify</b> - универсальный клиент для подключения.\n\n"
+        "📱 <b>V2Box</b> - удобный клиент для импорта подписки на iPhone.\n\n"
+        "📱 <b>V2Ray</b> - альтернативный клиент для подключения."
     )
 
     await callback_query.message.edit_text(text, reply_markup=client_type_keyboard().as_markup(), parse_mode="HTML")
@@ -289,7 +378,7 @@ async def handle_download_app(callback_query: CallbackQuery):
 async def handle_download_app_hiddify(callback_query: CallbackQuery):
     """Скачивание приложения Hiddify."""
     text = (
-        "Нажмите на кнопку ниже, чтобы установить <b>V2Box</b> из App Store."
+        "Выберите платформу для загрузки <b>Hiddify</b>."
     )
     await callback_query.message.edit_text(text, reply_markup=install_app_button_hiddify().as_markup(), parse_mode="HTML")
 
@@ -297,13 +386,24 @@ async def handle_download_app_hiddify(callback_query: CallbackQuery):
 async def handle_download_app_v2ray(callback_query: CallbackQuery):
     """Скачивание приложения V2Ray."""
     text = (
-        "Нажмите на кнопку ниже, чтобы установить <b>V2Box</b> из App Store."
+        "Выберите платформу для загрузки <b>V2Ray</b>."
     )
     await callback_query.message.edit_text(text, reply_markup=install_app_button_v2ray().as_markup(), parse_mode="HTML")
 
 
+async def handle_download_app_v2box(callback_query: CallbackQuery):
+    """Скачивание приложения V2Box."""
+    text = (
+        "Нажмите на кнопку ниже, чтобы установить <b>V2Box</b> из App Store."
+    )
+    await callback_query.message.edit_text(text, reply_markup=install_app_button_v2box().as_markup(), parse_mode="HTML")
+
+
 async def handle_reg_subscription(callback_query: CallbackQuery):
     """Выбор подписки."""
+    if not await _ensure_username(callback_query):
+        return
+
     text_parts = ["Выберите подписку:\n\n"]
 
     for tariff_key, tariff_info in config.TariffConfig.TARIFFS.items():
@@ -320,6 +420,9 @@ async def handle_reg_subscription(callback_query: CallbackQuery):
 
 async def handle_add_balance(callback_query: CallbackQuery):
     """Выбор тарифа для пополнения."""
+    if not await _ensure_username(callback_query):
+        return
+
     data = callback_query.data
     if data.startswith("add_balance_"):
         tariff_key = data.split("_")[-1]
@@ -347,6 +450,9 @@ async def handle_add_balance(callback_query: CallbackQuery):
 
 async def handle_confirm_payment(callback_query: CallbackQuery):
     """Подтверждение оплаты пользователем."""
+    if not await _ensure_username(callback_query):
+        return
+
     await notification_service.notify_payment_received(
         callback_query.message.chat.id,
         callback_query.from_user.id
@@ -524,8 +630,11 @@ async def handle_user_connection(message: Message, user_id: int):
 
     profile_data = user_info[3]
     profile = json.loads(profile_data)
-    username = profile.get("username", "Unknown")
-    profile_name = f"{username}-{user_id}"
+    username = UserService.normalize_username(profile.get("username"))
+
+    if not username:
+        await message.answer(UserService.USERNAME_REQUIRED_TEXT, reply_markup=main_menu_back().as_markup(), parse_mode="HTML")
+        return
 
     uuid = user_info[2]
     if not uuid or uuid == "N/A":

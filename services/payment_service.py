@@ -11,6 +11,7 @@ from aiogram import Bot
 import database as db
 import config
 from keyboards.payment import admin_payment_buttons
+from services.user_service import UserService
 
 
 logger = logging.getLogger(__name__)
@@ -86,19 +87,22 @@ class PaymentService:
             amount: Сумма оплаты
         """
         user = db.get_user(user_id)
-        username = "Unknown"
+        username = None
         if user and user[3]:
             try:
                 profile = json.loads(user[3])
-                username = profile.get("username", "Unknown")
+                username = profile.get("username")
             except json.JSONDecodeError:
                 pass
         
         keyboard = admin_payment_buttons(user_id)
+        user_label = UserService.format_username(username)
+        if user_label == "не установлен":
+            user_label = "без username"
         
         admin_id = config.BotConfig.ADMIN_PAYMENTS
         message_text = (
-            f"⚠️ <b>@{username}</b> <i>(ID: {user_id})</i> создал запрос.\n\n"
+            f"⚠️ <b>{user_label}</b> <i>(ID: {user_id})</i> создал запрос.\n\n"
             f"Сумма: <b>{amount} рублей.</b>\n"
             f"❗️Не пополняйте баланс пока пользователь не пришлёт скриншот и сообщение с подтверждение оплаты!"
         )

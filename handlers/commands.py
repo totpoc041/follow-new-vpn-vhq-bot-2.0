@@ -27,7 +27,7 @@ async def cmd_start(message: Message):
     Регистрирует нового пользователя или показывает главное меню.
     """
     user_id = message.from_user.id
-    username = message.from_user.username or "Unknown"
+    username = UserService.normalize_username(message.from_user.username)
 
     # Обновляем позицию
     db.update_pos("start", user_id)
@@ -37,7 +37,7 @@ async def cmd_start(message: Message):
 
     if not user:
         # Регистрируем нового пользователя
-        db.add_user(user_id, username)
+        UserService.add_user(user_id, username)
         logger.info(f"Пользователь {username} (ID: {user_id}) зарегистрирован.")
 
         text = (
@@ -46,7 +46,10 @@ async def cmd_start(message: Message):
             "При любых багах и проблемах пишите админу.\n\n"
             "❗️Первым делом установите наше приложение, нажав на кнопку <b>📱Установить App</b> ниже.\n\n"
         )
+        if not username:
+            text += f"{UserService.USERNAME_REQUIRED_TEXT}\n\n"
     else:
+        UserService.sync_username(user_id, username)
         # Показываем полную информацию о пользователе (как в главном меню)
         # Используем глобальный сервис из callbacks (с общим кэшем)
         # Если сервис ещё не инициализирован, создаём временный

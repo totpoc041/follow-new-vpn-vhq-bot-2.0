@@ -16,6 +16,7 @@ import database as db
 import config
 from services.hiddify_service import HiddifyService
 from keyboards.subscription import subscription_action_buttons
+from services.user_service import UserService
 
 
 logger = logging.getLogger(__name__)
@@ -92,16 +93,19 @@ class NotificationService:
             target_user_id: ID получателя платежа (админ)
         """
         user = db.get_user(user_id)
-        username = "Unknown"
+        username = None
         if user and user[3]:
             try:
                 profile = json.loads(user[3])
-                username = profile.get("username", "Unknown")
+                username = profile.get("username")
             except json.JSONDecodeError:
                 pass
         
         admin_id = config.BotConfig.ADMIN_PAYMENTS
-        message_text = f"Пользователь @{username} (ID: {target_user_id}) подтвердил пополнение баланса."
+        user_label = UserService.format_username(username)
+        if user_label == "не установлен":
+            user_label = "без username"
+        message_text = f"Пользователь {user_label} (ID: {target_user_id}) подтвердил пополнение баланса."
         
         await self.bot.send_message(admin_id, message_text)
         logger.info(f"Админ уведомлён о подтверждении платежа от пользователя {user_id}")
