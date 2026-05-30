@@ -5,6 +5,9 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
+V2BOX_IOS_URL = "https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690?l=ru"
+
+
 def profile_type_keyboard() -> InlineKeyboardBuilder:
     """
     Выбор типа профиля (Hiddify или V2Ray).
@@ -28,12 +31,9 @@ def install_app_button_hiddify() -> InlineKeyboardBuilder:
         InlineKeyboardBuilder с кнопками платформ
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="📱 iOS", url="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532?platform=iphone")
-    builder.button(text="🤖 Android", url="https://play.google.com/store/apps/details?id=app.hiddify.com")
-    builder.button(text="💻 Windows", url="https://apps.microsoft.com/detail/9pdfnl3qv2s5?hl=ru-RU&gl=RU")
-    builder.button(text="🍏 MacOS", url="https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg")
+    builder.button(text="📱 Установить V2Box", url=V2BOX_IOS_URL)
     builder.button(text="◀️ Назад", callback_data="download_app")
-    builder.adjust(2, 2, 1)
+    builder.adjust(1)
     return builder
 
 
@@ -45,12 +45,9 @@ def install_app_button_v2ray() -> InlineKeyboardBuilder:
         InlineKeyboardBuilder с кнопками платформ
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="📱 iOS", url="https://apps.apple.com/en/app/v2raytun/id6476628951")
-    builder.button(text="🤖 Android", url="https://play.google.com/store/apps/details?id=com.v2raytun.android")
-    builder.button(text="💻 Windows", url="https://apps.microsoft.com/detail/9pdfnl3qv2s5?hl=ru-RU&gl=RU")
-    builder.button(text="🍏 MacOS", url="https://apps.apple.com/en/app/v2raytun/id6476628951")
+    builder.button(text="📱 Установить V2Box", url=V2BOX_IOS_URL)
     builder.button(text="◀️ Назад", callback_data="main_menu")
-    builder.adjust(2, 2, 1)
+    builder.adjust(1)
     return builder
 
 
@@ -62,8 +59,7 @@ def client_type_keyboard() -> InlineKeyboardBuilder:
         InlineKeyboardBuilder с кнопками выбора
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="📱 Hiddify", callback_data="download_app_hiddify")
-    builder.button(text="📱 V2Ray", callback_data="download_app_v2ray")
+    builder.button(text="📱 Установить V2Box", url=V2BOX_IOS_URL)
     builder.button(text="◀️ Назад", callback_data="main_menu")
     builder.adjust(1)
     return builder

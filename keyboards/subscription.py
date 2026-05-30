@@ -13,9 +13,9 @@ def subscription_buttons() -> InlineKeyboardBuilder:
         InlineKeyboardBuilder с кнопками тарифов
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="🤏 30 дней / 400 рублей", callback_data="add_balance_30day")
-    builder.button(text="👍 60 дней / 800 рублей", callback_data="add_balance_60day")
-    builder.button(text="🤘 90 дней / 1200 рублей", callback_data="add_balance_90day")
+    builder.button(text="🤏 30 дней / 111 рублей", callback_data="add_balance_30day")
+    builder.button(text="👍 60 дней / 222 рублей", callback_data="add_balance_60day")
+    builder.button(text="🤘 90 дней / 333 рублей", callback_data="add_balance_90day")
     builder.button(text="◀️ Назад", callback_data="main_menu")
     builder.adjust(1)
     return builder

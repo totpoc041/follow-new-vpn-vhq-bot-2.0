@@ -8,6 +8,7 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from typing import List, Tuple
+from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 
@@ -33,6 +34,7 @@ class NotificationService:
         """
         self.bot = bot
         self.hiddify = hiddify_service
+        self.timezone = ZoneInfo(config.AppConfig.SCHEDULER_TIMEZONE)
         logger.info("NotificationService инициализирован")
     
     async def broadcast_message(
@@ -167,7 +169,7 @@ class NotificationService:
             try:
                 start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
                 expire_date = start_date + timedelta(days=int(package_days))
-                days_left = (expire_date - datetime.now().date()).days
+                days_left = (expire_date - datetime.now(self.timezone).date()).days
             except Exception:
                 continue
             
@@ -195,8 +197,13 @@ class NotificationService:
         Уведомления отправляются ежедневно в 16:20.
         """
         while True:
-            now = datetime.now()
-            next_run = now.replace(hour=16, minute=20, second=0, microsecond=0)
+            now = datetime.now(self.timezone)
+            next_run = now.replace(
+                hour=config.AppConfig.DAILY_CHECK_HOUR,
+                minute=config.AppConfig.DAILY_CHECK_MINUTE,
+                second=0,
+                microsecond=0,
+            )
             
             if now >= next_run:
                 next_run += timedelta(days=1)

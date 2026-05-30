@@ -75,45 +75,41 @@ pip install -r requirements.txt
 
 ### 4. Настройка конфигурации
 
-Откройте файл `config.py` и заполните настройки:
+Скопируйте шаблон и заполните `.env`:
 
-```python
-class BotConfig:
-    """Конфигурация Telegram бота"""
-    ADMIN_PAYMENTS = 31869384  # Telegram ID администратора
-    TOKEN = "YOUR_BOT_TOKEN"   # Токен бота от @BotFather
+```bash
+cp .env.example .env
+```
 
+Минимально необходимые переменные:
 
-class HiddifyConfig:
-    """Конфигурация Hiddify API и сервера"""
-    BASE_URL = "https://your-hiddify-domain.com"
-    ADMIN_PATH = "/your-admin-path"
-    USER_PATH = "/your-user-path"
-    API_KEY = "your-api-key"  # Ключ API из панели Hiddify
+```env
+TELEGRAM_BOT_TOKEN=
+ADMIN_IDS=
+HIDDIFY_API_BASE_URL=
+HIDDIFY_API_KEY=
+DATABASE_PATH=data/database.db
 ```
 
 ### 5. Настройка тарифов
 
-В `config.py` измените тарифы под себя:
+Базовые значения для первого тарифа берутся из `.env`:
 
-```python
-class TariffConfig:
-    """Тарифные планы"""
-    TARIFFS = {
-        "30day": {"package_days": 30, "usage_limit_GB": 130, "price": 400, "emoji": "🤏"},
-        "60day": {"package_days": 60, "usage_limit_GB": 370, "price": 800, "emoji": "👍"},
-        "90day": {"package_days": 90, "usage_limit_GB": 690, "price": 1200, "emoji": "🤘"},
-    }
+```env
+DEFAULT_PACKAGE_DAYS=30
+DEFAULT_USAGE_LIMIT_GB=130
 ```
+
+Если нужно менять все тарифы, отредактируйте `TariffConfig` в `config.py`.
 
 ## 🎯 Запуск бота
 
 ```bash
-python main.py
+python3 main.py
 ```
 
 После запуска бот:
-1. Инициализирует базу данных `users.db`
+1. Инициализирует базу данных по пути `DATABASE_PATH`
 2. Подключится к Hiddify API
 3. Запустит фоновую задачу уведомлений
 4. Начнёт обрабатывать сообщения
@@ -164,12 +160,12 @@ python main.py
 1. Откройте панель администратора Hiddify
 2. Перейдите в настройки API
 3. Создайте новый API ключ
-4. Скопируйте ключ в `config.py`
+4. Скопируйте ключ в `.env` как `HIDDIFY_API_KEY`
 
 ### 2. Получение путей
 
-- **ADMIN_PATH** — путь к админ-панели (например, `/admin-link`)
-- **USER_PATH** — путь для пользовательских ссылок (например, `/user-link`)
+- **HIDDIFY_API_BASE_URL** — базовый URL Hiddify API
+- **HIDDIFY_SUB_FALLBACK_TEMPLATE** — шаблон пользовательской ссылки, если нужен отдельный путь подписки
 
 ## 📊 Логирование
 
@@ -204,20 +200,9 @@ logging.basicConfig(level=logging.DEBUG, ...)
 
 ### ⚠️ Важно!
 
-1. **Не коммитьте токены в Git!** Используйте `.env` или удалите `config.py` из репозитория
+1. **Не коммитьте токены в Git!** Храните их только в `.env`
 2. **Ограничьте доступ** к админ-панели Hiddify по IP
 3. **Регулярно обновляйте** зависимости (`pip install --upgrade -r requirements.txt`)
-
-### Рекомендации
-
-```bash
-# Добавьте config.py в .gitignore
-echo "config.py" >> .gitignore
-
-# Или используйте переменные окружения
-# TELEGRAM_BOT_TOKEN=your_token
-# HIDDIFY_API_KEY=your_key
-```
 
 ## 📦 Зависимости
 

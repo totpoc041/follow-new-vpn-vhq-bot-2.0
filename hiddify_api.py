@@ -1,4 +1,3 @@
-import database
 import requests
 import config 
 import json
@@ -8,19 +7,13 @@ from datetime import datetime, timedelta
 class HiddifyAPI:
     def __init__(self, api_url: str, api_key: str):
         self.api_url = api_url.rstrip("/")
-        self.headers = {
-            "Accept": "application/json",
-            "Hiddify-API-Key": api_key,
-        }
-        logging.info(f"HiddifyAPI инициализирован с URL: {self.api_url}")
-        logging.info(f"API Key: {api_key[:10]}...")
+        self.headers = config.HiddifyConfig.get_api_headers()
+        logging.info("HiddifyAPI инициализирован")
 
 
     def _request(self, method, endpoint, params=None, data=None):
         url = f"{self.api_url}/{endpoint}"
-        logging.info(f"API Request: {method} {url}")
-        if data:
-            logging.info(f"Request data: {json.dumps(data, indent=2, ensure_ascii=False)}")
+        logging.info("API Request: %s %s", method, endpoint)
         
         try:
             response = requests.request(
@@ -31,18 +24,18 @@ class HiddifyAPI:
                 timeout=10  # Таймаут 10 секунд
             )
             
-            logging.info(f"Response status: {response.status_code}")
+            logging.info("Response status: %s", response.status_code)
             
             if response.status_code != 200:
-                logging.error(f"Error {response.status_code}: {response.text}")
+                logging.error("Hiddify API error: HTTP %s", response.status_code)
                 return {"error": f"HTTP {response.status_code}: {response.text}"}
             
             return response.json()
         except requests.exceptions.Timeout:
-            logging.error(f"Timeout при запросе к {url}")
+            logging.error("Timeout при запросе к Hiddify API")
             return {"error": "Превышено время ожидания ответа от сервера"}
         except requests.exceptions.ConnectionError:
-            logging.error(f"Ошибка соединения с {url}")
+            logging.error("Ошибка соединения с Hiddify API")
             return {"error": "Ошибка соединения с сервером"}
         except Exception as e:
             logging.error(f"Неожиданная ошибка при запросе: {e}")
@@ -52,7 +45,6 @@ class HiddifyAPI:
     def get_users(self):
         """Получить список всех пользователей и их характеристики (трафик, дата, статус и т. д.)"""
         response = self._request("GET", "api/v2/admin/user/")
-        logging.info(f"Ответ API /get_users:\n{json.dumps(response, indent=4, ensure_ascii=False)}")
     
         # Проверяем на наличие ошибки
         if not isinstance(response, list):
@@ -99,7 +91,6 @@ class HiddifyAPI:
     def get_user(self, uuid: str):
         """Получить информацию о пользователе по UUID"""
         response = self._request("GET", f"api/v2/admin/user/{uuid}/")
-        logging.info(f"Ответ API /get_users:\n{json.dumps(response, indent=4, ensure_ascii=False)}")
 
         if "error" in response:
             return {"error": response["error"]}
@@ -172,7 +163,6 @@ class HiddifyAPI:
         """Получить список доступных доменов/SNI"""
         try:
             response = self._request("GET", "api/v2/admin/domain/")
-            logging.info(f"Ответ API /get_domains:\n{json.dumps(response, indent=4, ensure_ascii=False)}")
             return response
         except Exception as e:
             logging.error(f"Ошибка при получении доменов: {e}")
@@ -191,7 +181,6 @@ class HiddifyAPI:
             for endpoint in endpoints:
                 try:
                     response = self._request("GET", endpoint)
-                    logging.info(f"Ответ от {endpoint}:\n{json.dumps(response, indent=4, ensure_ascii=False)}")
                     return response
                 except:
                     continue

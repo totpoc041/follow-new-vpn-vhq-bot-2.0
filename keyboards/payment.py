@@ -47,9 +47,9 @@ def admin_payment_buttons(user_id: int) -> InlineKeyboardBuilder:
         InlineKeyboardBuilder с кнопками сумм
     """
     builder = InlineKeyboardBuilder()
-    builder.button(text="Пополнить на 400 руб.", callback_data=f"admin_balance_{user_id}_400")
-    builder.button(text="Пополнить на 800 руб.", callback_data=f"admin_balance_{user_id}_800")
-    builder.button(text="Пополнить на 1200 руб.", callback_data=f"admin_balance_{user_id}_1200")
+    builder.button(text="Пополнить на 111 руб.", callback_data=f"admin_balance_{user_id}_111")
+    builder.button(text="Пополнить на 222 руб.", callback_data=f"admin_balance_{user_id}_222")
+    builder.button(text="Пополнить на 333 руб.", callback_data=f"admin_balance_{user_id}_333")
     builder.button(text="Отменить", callback_data="cancel_payment")
     builder.adjust(2, 2)
     return builder

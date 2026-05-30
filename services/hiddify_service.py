@@ -80,17 +80,14 @@ class HiddifyService:
         if "error" in response:
             return {"error": response["error"]}
 
-        # Вычисляем дату окончания
-        expire_date = self._calculate_expire_date(response)
-
         result = {
-            "status": "Активен" if response.get('is_active') else "Неактивен",
+            "status": response.get('status', 'Неизвестно'),
             "start_date": response.get('start_date', 'Неизвестно'),
-            "expire_date": expire_date,
+            "expire_date": response.get('expire_date', 'Неизвестно'),
             "current_usage_gb": float(response.get('current_usage_GB', 0)),
             "usage_limit_gb": response.get('usage_limit_GB', 'N/A'),
             "last_online": response.get('last_online', "Неизвестно"),
-            "link": config.HiddifyConfig.get_user_link(uuid),
+            "link": response.get('link', config.HiddifyConfig.get_user_link(uuid)),
             "package_days": int(response.get('package_days', 0)),
         }
 
@@ -214,7 +211,6 @@ class HiddifyService:
         Returns:
             Строка с ссылкой на подписку
         """
-        return (
-            f"{config.HiddifyConfig.BASE_URL}{config.HiddifyConfig.USER_PATH}/{uuid}/sub/"
-            f"?asn=unknown#{username}-{user_id}"
-        )
+        link = config.HiddifyConfig.get_user_link(uuid)
+        separator = "&" if "?" in link else "?"
+        return f"{link}{separator}asn=unknown#{username}-{user_id}"

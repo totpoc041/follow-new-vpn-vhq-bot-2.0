@@ -42,7 +42,8 @@ async def cmd_start(message: Message):
 
         text = (
             "<b>Добро пожаловать! </b>🌐\n\n"
-            "Я бот, который поможет вам обезопасить ваш интернет-трафик и выйти за рамки ограничений.\n\n"
+            "Я бот, который поможет вам обезопасить ваш интернет-трафик и выйти за рамки ограничений. "
+            "При любых багах и проблемах пишите админу.\n\n"
             "❗️Первым делом установите наше приложение, нажав на кнопку <b>📱Установить App</b> ниже.\n\n"
         )
     else:
@@ -65,9 +66,7 @@ async def cmd_msg_all(message: Message):
     Обработчик команды /msg_all для рассылки сообщений всем пользователям.
     Доступно только администраторам.
     """
-    admin_ids = [config.BotConfig.ADMIN_PAYMENTS]
-    
-    if message.from_user.id not in admin_ids:
+    if not config.is_admin(message.from_user.id):
         await message.reply("🤷‍♂️ У вас нет прав для выполнения этой команды.", parse_mode="HTML")
         return
     

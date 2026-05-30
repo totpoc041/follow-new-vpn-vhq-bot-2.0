@@ -7,8 +7,8 @@ import logging
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
+import config
 import database as db
-from services.payment_service import PaymentService
 
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,14 @@ async def confirm_payment_admin(callback_query: CallbackQuery):
     
     Обработчик для кнопки подтверждения платежа от админа.
     """
+    if not config.is_admin(callback_query.from_user.id):
+        await callback_query.answer("⛔ Недостаточно прав.", show_alert=True)
+        logger.warning(
+            "Попытка подтверждения платежа без прав от пользователя %s",
+            callback_query.from_user.id,
+        )
+        return
+
     # Парсим данные из callback
     _, user_id, duration = callback_query.data.split("-")
     user_id = int(user_id)

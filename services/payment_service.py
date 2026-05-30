@@ -31,7 +31,7 @@ class PaymentService:
     
     def add_balance(self, user_id: int) -> float:
         """
-        Добавить баланс пользователю (на фиксированную сумму 400 руб).
+        Добавить баланс пользователю на сумму базового тарифа.
         
         Args:
             user_id: Telegram ID пользователя
@@ -41,7 +41,12 @@ class PaymentService:
         """
         db.add_balance(user_id)
         new_balance = db.get_user_balance(user_id)
-        logger.info(f"Баланс пользователя {user_id} пополнен на 400 руб. Новый баланс: {new_balance}")
+        logger.info(
+            "Баланс пользователя %s пополнен на %s руб. Новый баланс: %s",
+            user_id,
+            config.TariffConfig.TARIFFS["30day"]["price"],
+            new_balance,
+        )
         return new_balance
     
     def update_balance(self, user_id: int, amount: float) -> float:
@@ -141,7 +146,8 @@ class PaymentService:
         Returns:
             Стоимость в рублях
         """
-        return 400 * (package_days // 30)
+        monthly_price = config.TariffConfig.TARIFFS["30day"]["price"]
+        return monthly_price * (package_days // 30)
     
     def check_sufficient_balance(self, user_id: int, required_amount: float) -> bool:
         """

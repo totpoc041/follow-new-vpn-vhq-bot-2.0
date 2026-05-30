@@ -44,6 +44,15 @@ def init_services(bot):
     notification_service = NotificationService(bot, hiddify_service)
 
 
+async def _ensure_admin(callback_query: CallbackQuery) -> bool:
+    if config.is_admin(callback_query.from_user.id):
+        return True
+
+    await callback_query.answer("⛔ Недостаточно прав.", show_alert=True)
+    logger.warning("Попытка доступа к админскому действию от пользователя %s", callback_query.from_user.id)
+    return False
+
+
 @router.callback_query()
 async def handle_callback(callback_query: CallbackQuery):
     """
@@ -183,6 +192,13 @@ async def handle_link_v2ray(callback_query: CallbackQuery):
     user_info = db.get_user(user_id)
     uuid = user_info[2] if user_info and user_info[2] and user_info[2] != "N/A" else None
 
+    if not uuid:
+        await callback_query.message.edit_text(
+            "⚠️ У вас пока нет активной подписки.",
+            reply_markup=main_menu_back().as_markup(),
+        )
+        return
+
     # Получаем информацию о подписке
     profile_data = json.loads(user_info[3]) if user_info[3] else {}
     balance = profile_data.get("balance", 0)
@@ -235,6 +251,14 @@ async def handle_link_hiddify(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
     user_info = db.get_user(user_id)
     uuid = user_info[2] if user_info and user_info[2] and user_info[2] != "N/A" else None
+
+    if not uuid:
+        await callback_query.message.edit_text(
+            "⚠️ У вас пока нет активной подписки.",
+            reply_markup=main_menu_back().as_markup(),
+        )
+        return
+
     link = config.HiddifyConfig.get_user_link(uuid)
 
     text = (
@@ -255,9 +279,8 @@ async def handle_link_hiddify(callback_query: CallbackQuery):
 async def handle_download_app(callback_query: CallbackQuery):
     """Выбор клиента для скачивания."""
     text = (
-        "<b>🤔 Выберите клиент, который будете использовать:</b>\n\n"
-        "📱 <b>Hiddify</b> - Рекомендуемый клиент для подключения. <i>Возможны проблемы с подключением в мобильной сети.</i>\n\n"
-        "📱 <b>V2Ray</b> - Альтернативный клиент для подключения. <i>Не отображает остаток трафика, но работает стабильнее.</i>\n"
+        "<b>📱 Установите приложение V2Box:</b>\n\n"
+        "Нажмите на кнопку ниже, чтобы открыть страницу приложения в App Store."
     )
 
     await callback_query.message.edit_text(text, reply_markup=client_type_keyboard().as_markup(), parse_mode="HTML")
@@ -266,12 +289,7 @@ async def handle_download_app(callback_query: CallbackQuery):
 async def handle_download_app_hiddify(callback_query: CallbackQuery):
     """Скачивание приложения Hiddify."""
     text = (
-        "Выберите платформу для загрузки:\n\n"
-        "📱 <b>iOS</b> - Скачайте приложение для устройств Apple.\n"
-        "🤖 <b>Android</b> - Скачайте приложение для Android устройств.\n"
-        "💻 <b>Windows</b> - Скачайте приложение для Windows.\n"
-        "🍏 <b>MacOS</b> - Скачайте приложение для MacOS.\n\n"
-        "<i>🔽  Нажмите на нужную платформу для скачивания приложения.</i>"
+        "Нажмите на кнопку ниже, чтобы установить <b>V2Box</b> из App Store."
     )
     await callback_query.message.edit_text(text, reply_markup=install_app_button_hiddify().as_markup(), parse_mode="HTML")
 
@@ -279,12 +297,7 @@ async def handle_download_app_hiddify(callback_query: CallbackQuery):
 async def handle_download_app_v2ray(callback_query: CallbackQuery):
     """Скачивание приложения V2Ray."""
     text = (
-        "Выберите платформу для загрузки:\n\n"
-        "📱 <b>iOS</b> - Скачайте приложение для устройств Apple.\n"
-        "🤖 <b>Android</b> - Скачайте приложение для Android устройств.\n"
-        "💻 <b>Windows</b> - Скачайте приложение для Windows.\n"
-        "🍏 <b>MacOS</b> - Скачайте приложение для MacOS.\n\n"
-        "<i>🔽  Нажмите на нужную платформу для скачивания приложения.</i>"
+        "Нажмите на кнопку ниже, чтобы установить <b>V2Box</b> из App Store."
     )
     await callback_query.message.edit_text(text, reply_markup=install_app_button_v2ray().as_markup(), parse_mode="HTML")
 
@@ -293,7 +306,7 @@ async def handle_reg_subscription(callback_query: CallbackQuery):
     """Выбор подписки."""
     text_parts = ["Выберите подписку:\n\n"]
 
-    for tariff_key, tariff_info in config.TARIFFS.items():
+    for tariff_key, tariff_info in config.TariffConfig.TARIFFS.items():
         text_parts.append(f"<b>{tariff_info['emoji']} Подписка на {tariff_info['package_days']} дней:</b>\n")
         text_parts.append(f"💵 Сумма: {tariff_info['price']} рублей\n")
         text_parts.append(f"⏳ Доступ: {tariff_info['package_days']} дней\n")
@@ -310,7 +323,7 @@ async def handle_add_balance(callback_query: CallbackQuery):
     data = callback_query.data
     if data.startswith("add_balance_"):
         tariff_key = data.split("_")[-1]
-        tariff = config.TARIFFS.get(tariff_key)
+        tariff = config.TariffConfig.TARIFFS.get(tariff_key)
 
         if tariff:
             # Сохраняем выбранный тариф в базу данных
@@ -322,6 +335,7 @@ async def handle_add_balance(callback_query: CallbackQuery):
                 "📌 Для пополнения баланса используйте следующие данные:\n"
                 f"💵 <b>Сумма:</b> {amount} рублей\n"
                 "⏳ <b>Время на пополнение:</b> 60 минут\n\n"
+                f"{config.AppConfig.BANK_DETAILS}\n\n"
                 "<b>⚠ После оплаты отправьте чек в чат для подтверждения. <i>(скриншот или документ)</i></b>"
             )
             keyboard = confirm_payment_button(callback_query.from_user.id)
@@ -350,6 +364,9 @@ async def handle_confirm_payment(callback_query: CallbackQuery):
 
 async def handle_admin_balance(callback_query: CallbackQuery):
     """Пополнение баланса админом."""
+    if not await _ensure_admin(callback_query):
+        return
+
     parts = callback_query.data.split('_')
     if len(parts) != 4:
         await callback_query.answer("Ошибка в данных колбэка.")
@@ -385,6 +402,9 @@ async def handle_admin_balance(callback_query: CallbackQuery):
 
 async def handle_cancel_payment(callback_query: CallbackQuery):
     """Отмена оплаты."""
+    if not await _ensure_admin(callback_query):
+        return
+
     user_id = callback_query.from_user.id
     await callback_query.message.edit_text(
         "Баланс не пополнен. Операция отменена.",
@@ -458,8 +478,7 @@ async def handle_get_users(callback_query: CallbackQuery):
     
     user_id = callback_query.from_user.id
     
-    if not config.is_admin(user_id):
-        await callback_query.message.answer("⛔ У вас нет прав для просмотра списка пользователей.")
+    if not await _ensure_admin(callback_query):
         return
     
     try:

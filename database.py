@@ -1,11 +1,22 @@
+import json
 import logging
 import sqlite3
-import json
 from datetime import datetime
+from pathlib import Path
 
-DB_NAME = "users.db"
+import config
+
+
+DB_NAME = config.AppConfig.DATABASE_PATH
+
+
+def _ensure_db_directory():
+    db_path = Path(DB_NAME)
+    if db_path.parent != Path("."):
+        db_path.parent.mkdir(parents=True, exist_ok=True)
 
 def init_db():
+    _ensure_db_directory()
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("""
@@ -32,19 +43,16 @@ def get_all_user_ids():
     cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
-    logging.info(f"Результат запроса get_all_user_ids: {users}")
     conn.close()
     return [user[0] for user in users]
     
 
 def get_user(user_id):
-    logging.info(f"Запрос данных пользователя с user_id: {user_id}")
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     user = cursor.fetchone()
     conn.close()
-    logging.info(f"Результат запроса get_user для user_id {user_id}: {user}")
     return user
 
 
@@ -77,7 +85,6 @@ def get_admins():
     cursor.execute("SELECT tg_id FROM admins")
     admins = cursor.fetchall()
     conn.close()
-    logging.info(f"Результат запроса get_admins: {admins}")
     return [admin[0] for admin in admins]
 
 
@@ -86,7 +93,6 @@ def update_pos(new_pos, user_id):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET pos = ? WHERE user_id = ?", (new_pos, user_id))
-    logging.info(f"Результат запроса update_pos: {new_pos} у пользователя с user_id: {user_id}")
     conn.commit()
     conn.close()
 
@@ -99,11 +105,10 @@ def add_balance(user_id: int):
     if user:
         profile = json.loads(user[0])
         current_balance = profile.get('balance', 0)
-        new_balance = current_balance + 400
+        new_balance = current_balance + config.TariffConfig.TARIFFS["30day"]["price"]
 
         profile['balance'] = new_balance
         cursor.execute("UPDATE users SET profile = ? WHERE user_id = ?", (json.dumps(profile), user_id))
-        logging.info(f"Результат запроса add_balance: {new_balance} у пользователя с user_id: {user_id}")
         conn.commit()
     conn.close()
 
@@ -116,8 +121,8 @@ def get_user_balance(user_id: int):
 
     if user:
         profile = json.loads(user[0])
+        conn.close()
         return profile.get('balance', 0)
-    logging.info(f"Результат запроса get_user_balance: {profile} у пользователя с user_id: {user_id}")
     conn.close()
     return 0
 
@@ -186,6 +191,6 @@ def get_user_profile(user_id):
 
     if profile_json:
         profile = json.loads(profile_json[0])
-        logging.info(f"Результат запроса get_user_profile: {profile} у пользователя с user_id: {user_id}")
         conn.close()
         return profile
+    conn.close()
