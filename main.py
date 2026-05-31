@@ -4,8 +4,9 @@ Telegram бот для управления подписками Hiddify VPN.
 Точка входа приложения. Инициализирует бота, сервисы и запускает polling.
 """
 
-import logging
 import asyncio
+import logging
+import time
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
@@ -42,6 +43,17 @@ async def start_notification_scheduler():
     await notification_service.start_scheduled_notifications()
 
 
+async def watchdog_task():
+    """Фоновая задача для Docker Healthcheck."""
+    while True:
+        try:
+            with open("/tmp/bot_alive.txt", "w", encoding="utf-8") as alive_file:
+                alive_file.write(str(time.time()))
+        except Exception as exc:
+            logger.error("Ошибка Watchdog: %s", exc)
+        await asyncio.sleep(30 * 60)
+
+
 async def on_startup():
     """Выполняется при запуске бота."""
     logger.info("Бот запускается...")
@@ -57,6 +69,9 @@ async def on_startup():
     
     # Запускаем фоновую задачу уведомлений
     asyncio.create_task(start_notification_scheduler())
+
+    # Запускаем watchdog для Docker Healthcheck
+    asyncio.create_task(watchdog_task())
     
     # Удаляем вебхук и запускаем polling
     await bot.delete_webhook(drop_pending_updates=True)

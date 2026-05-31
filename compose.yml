@@ -10,3 +10,9 @@ services:
     volumes:
       - ./data:/app/data
     command: ["python", "main.py"]
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/bot_alive.txt -mmin -35 | grep . || exit 1"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
